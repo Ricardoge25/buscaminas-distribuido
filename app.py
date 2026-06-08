@@ -129,6 +129,9 @@ def handle_resolver():
     # Le enviamos al cliente únicamente las coordenadas de las minas
     emit('juego_resuelto', {'minas': partida['minas']})
 
+import os
+
 if __name__ == '__main__':
-  # Ejecutamos el servidor con soporte para WebSockets
-  socketio.run(app, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    # En producción desactivamos debug=False por seguridad y rendimiento
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
