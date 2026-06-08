@@ -1,4 +1,5 @@
 import random
+import os
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit 
 
@@ -6,9 +7,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'buscaminas_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Diccionario en memoria para guardar el estado del juego de cada cliente conectado
-# Estructura: { socket_id: { 'tablero': [...], 'minas': [...], 'filas': X, 'columnas': Y } }
+# Diccionarios y estructuras en memoria para el control del clúster distributed
 partidas_activas = {}
+clientes_conectados = set()  # Registro en memoria de sockets activos en tiempo real
 
 class BuscaminasLogica:
   @staticmethod
@@ -17,14 +18,14 @@ class BuscaminasLogica:
     tablero = [[0 for _ in range(columnas)] for _ in range(filas)]
     minas = []
 
-    # Colocamos las minas aleatoreamente
+    # Colocamos las minas aleatoriamente
     minas_colocadas = 0
     while minas_colocadas < num_minas:
       fila = random.randint(0, filas - 1)
       columna = random.randint(0, columnas - 1)
       if (fila, columna) not in minas:
         minas.append((fila, columna))
-        tablero[fila][columna] = 'M' # Representramos la mina con una 'M'
+        tablero[fila][columna] = 'M' # Representamos la mina con una 'M'
         minas_colocadas += 1
 
     # Calcular los números alrededor de las minas
@@ -42,15 +43,31 @@ def index():
   # Renderizamos la página web principal
   return render_template('index.html')
 
-# --- EVENTOS WEB SOCKETS (Comunicación Bidireccional) ---
+# --- EVENTOS WEB SOCKETS (Monitoreo del Clúster y Conexiones) ---
 
 @socketio.on('connect')
 def handle_connect(auth=None):
-    print(f"Cliente conectado al servidor distribuido. Socket-ID: {request.sid}")
+    sid = request.sid
+    clientes_conectados.add(sid)
+    print(f"\n[+ CONEXIÓN] Cliente conectado al servidor distribuido. Socket-ID: {sid}")
+    print(f"[ESTADO CLÚSTER] Total clientes concurrentes activos: {len(clientes_conectados)}")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    sid = request.sid
+    # Remoción del socket del registro de telemetría activa
+    if sid in clientes_conectados:
+        clientes_conectados.remove(sid)
+    
+    # Limpieza preventiva de memoria RAM sobre el servidor
+    if sid in partidas_activas:
+        del partidas_activas[sid]
+        
+    print(f"\n[- DESCONEXIÓN] Cliente desconectado del servidor. Socket-ID: {sid}")
+    print(f"[ESTADO CLÚSTER] Total clientes concurrentes activos: {len(clientes_conectados)}")
 
 @socketio.on('configurar_juego')
 def handle_config(data):
-  # El cliente envía el tamaño y cantidad de minas por el socket
   filas = int(data['filas'])
   columnas = int(data['columnas'])
   num_minas = int(data['minas'])
@@ -59,7 +76,6 @@ def handle_config(data):
   tablero, minas = BuscaminasLogica.generar_tablero(filas, columnas, num_minas)
 
   # Guardamos la partida asociada al ID único de este cliente (Socket)
-  # Flask-SocketIO maneja un hilo independiente para cada evento de cliente
   client_id = request.sid
   partidas_activas[client_id] = {
     'tablero': tablero,
@@ -69,7 +85,7 @@ def handle_config(data):
     'reveladas': set()
   }
 
-  # Le avisamos al cliente que el tablero está listo (sin enviarle las posiciones de las minas)
+  # Le avisamos al cliente que el tablero está listo
   emit('tablero_creado', {'filas': filas, 'columnas': columnas})
 
 # --- LÓGICA DE EVENTOS DE JUEGO EN TIEMPO REAL ---
@@ -77,7 +93,6 @@ def handle_config(data):
 @socketio.on('click_celda')
 def handle_click(data):
   client_id = request.sid
-  # Si por alguna razón el servidor se reinició y no encuentra la partida, ignoramos.
   if client_id not in partidas_activas:
     return
   
@@ -95,7 +110,6 @@ def handle_click(data):
 
   # REQUISITO 2: Algoritmo recursivo para expandir casillas vacías ("FLOOD FILL")
   def expandir_vacias(fila, columna):
-    # Validar límites de la matriz y si ya fue procesada en este ciclo o antes
     if not (0 <= fila < partida['filas'] and 0 <= columna < partida['columnas']):
       return
     if (fila, columna) in partida['reveladas']:
@@ -106,7 +120,6 @@ def handle_click(data):
 
     celdas_a_revelar.append({'fila': fila, 'columna': columna, 'valor': valor})
 
-    # Si la celda actual tiene 0 minas alrededor, ejecutamos la recursividad en las 8 direcciones contiguas
     if valor == 0:
       for i in range(-1, 2):
         for j in range(-1, 2):
@@ -116,9 +129,15 @@ def handle_click(data):
   # Iniciamos la expansión desde la celda donde el usuario hizo click
   expandir_vacias(f, c)
 
-  # Devolvemos al cliente la lista de celdas que debe pintar en su pantalla
-  emit('resultado_click', {'evento': 'CONTINUAR', 'celdas_a_revelar': celdas_a_revelar})
-
+  # --- LÓGICA DE DETECCIÓN DE VICTORIA ---
+  total_casillas = partida['filas'] * partida['columnas']
+  total_minas = len(partida['minas'])
+  
+  # Si las casillas ocultas son exactamente iguales a la cantidad de minas, el usuario ganó
+  if total_casillas - len(partida['reveladas']) == total_minas:
+    emit('resultado_click', {'evento': 'VICTORIA', 'celdas_a_revelar': celdas_a_revelar})
+  else:
+    emit('resultado_click', {'evento': 'CONTINUAR', 'celdas_a_revelar': celdas_a_revelar})
 
 # REQUISITO 3: Opción "RESOLVER" 
 @socketio.on('solicitar_resolucion')
@@ -126,12 +145,9 @@ def handle_resolver():
   client_id = request.sid
   if client_id in partidas_activas:
     partida = partidas_activas[client_id]
-    # Le enviamos al cliente únicamente las coordenadas de las minas
     emit('juego_resuelto', {'minas': partida['minas']})
 
-import os
-
 if __name__ == '__main__':
+    # Captura el puerto dinámico asignado por el entorno de Railway en producción
     port = int(os.environ.get('PORT', 5000))
-    # En producción desactivamos debug por rendimiento y seguridad
     socketio.run(app, host='0.0.0.0', port=port, debug=False)

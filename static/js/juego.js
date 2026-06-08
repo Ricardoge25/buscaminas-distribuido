@@ -151,6 +151,12 @@ socket.on('resultado_click', (data) => {
         clearInterval(temporizador);
         alert('💥 ¡BOOM! Has pisado una mina. Juego Terminado.');
         resolverJuego();
+    } 
+    else if (data.evento === 'VICTORIA') {
+        juegoTerminado = true;
+        clearInterval(temporizador);
+        alert('🏆 ¡FELICITACIONES! Has despejado el campo sin activar ninguna mina. ¡Ganaste!');
+        resolverJuego(); // Muestra dónde estaban las minas como confirmación
     }
 });
 

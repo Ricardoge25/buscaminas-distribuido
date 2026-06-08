@@ -1,24 +1,25 @@
 .tablero-grid {
   display: grid;
   gap: 2px;
-  margin: 20px auto;
+  margin: 15px auto;
   background-color: #bcbcbc;
-  padding: 10px;
+  padding: 8px;
   border: 3px inset #fff;
-  display: inline-grid;
+  width: max-content;
+  max-width: 95vw; 
+  box-sizing: border-box;
 }
 
 .celda {
-  width: 1px solid #7b7b7b;
+  width: 40px;
   height: 40px;
-  font-weight: bold;
+  aspect-ratio: 1 / 1; 
   font-size: 18px;
-  text-align: center;
-  vertical-align: middle;
-  border: 2px outset #fff;
-  background-color: #bdbdbd;
-  cursor: pointer;
-  user-select: none;;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .celda.revelada {
@@ -44,22 +45,27 @@
   padding: 10px;
 }
 
-/* --- ADAPTACIÓN PARA DISPOSITIVOS MÓVILES --- */
+/* --- ADAPTACIÓN DINÁMICA MÓVIL --- */
 @media (max-width: 768px) {
   #contenedor-tablero {
-    overflow-x: auto;
-    padding: 10px;
-    -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
-  }
-
-  .celda {
-    width: 48px;
-    height: 48px;
-    font-size: 22px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    overflow-x: auto; 
+    padding: 5px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .tablero-grid {
-    /* Reducimos el padding para ganar espacio en los bordes de la pantalla */
-    padding: 5px; 
+    margin: 10px auto;
+    max-width: 100%;
+  }
+
+  .celda {
+    width: min(8vw, 6vh);
+    height: min(8vw, 6vh);
+    aspect-ratio: 1 / 1; 
+    font-size: min(4vw, 2.5vh); 
   }
 }
