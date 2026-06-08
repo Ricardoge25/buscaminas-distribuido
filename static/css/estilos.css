@@ -1,0 +1,45 @@
+.tablero-grid {
+  display: grid;
+  gap: 2px;
+  margin: 20px auto;
+  background-color: #bcbcbc;
+  padding: 10px;
+  border: 3px inset #fff;
+  display: inline-grid;
+}
+
+.celda {
+  width: 1px solid #7b7b7b;
+  height: 40px;
+  font-weight: bold;
+  font-size: 18px;
+  text-align: center;
+  vertical-align: middle;
+  border: 2px outset #fff;
+  background-color: #bdbdbd;
+  cursor: pointer;
+  user-select: none;;
+}
+
+.celda.revelada {
+  border: 1px solid #7b7b7b;
+  background-color: #e0e0e0;
+  cursor: default;
+}
+
+.celda.bandera {
+  background-color: #fafad2 !important;
+}
+
+.mina {
+  background-color: red !important;
+}
+
+.panel-info {
+  font-size: 1.2rem;
+  font-weight: bold;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 10px;
+}
