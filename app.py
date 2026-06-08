@@ -1,6 +1,6 @@
 import random
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'buscaminas_secret_key'
