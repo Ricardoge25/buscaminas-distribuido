@@ -133,5 +133,5 @@ import os
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    # En producción desactivamos debug=False por seguridad y rendimiento
+    # En producción desactivamos debug por rendimiento y seguridad
     socketio.run(app, host='0.0.0.0', port=port, debug=False)

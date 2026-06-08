@@ -51,20 +51,49 @@ socket.on('tablero_creado', (data) => {
 
     const grid = document.createElement('div');
     grid.className = 'tablero-grid';
-    grid.style.gridTemplateColumns = `repeat(${data.columnas}, 40px)`;
+    grid.style.gridTemplateColumns = `repeat(${data.columnas}, 1fr)`;
 
+    // Generar los botones de la matriz con soporte para escritorio y celulares
     for (let f = 0; f < data.filas; f++) {
         for (let c = 0; c < data.columnas; c++) {
             const boton = document.createElement('button');
             boton.className = 'celda';
             boton.id = `celda-${f}-${c}`;
             
+            // 1. COMPORTAMIENTO PARA ESCRITORIO
             boton.onclick = () => manejarClickCelda(f, c);
-            
             boton.oncontextmenu = (e) => {
-                e.preventDefault();
+                e.preventDefault(); // Bloquea el menú de Windows/Mac
                 manejarClicDerecho(f, c);
             };
+            
+            // 2. COMPORTAMIENTO PARA CELULARES (Toque largo = Clic derecho)
+            let tiempoPresionado;
+            let esToqueLargo = false;
+
+            boton.addEventListener('touchstart', (e) => {
+                // Iniciamos un temporizador de 500ms al tocar la celda
+                esToqueLargo = false;
+                tiempoPresionado = setTimeout(() => {
+                    esToqueLargo = true;
+                    // Ejecuta vibración física si el celular la soporta (¡toque premium de feedback!)
+                    if (navigator.vibrate) navigator.vibrate(50); 
+                    manejarClicDerecho(f, c);
+                }, 500); 
+            }, { passive: true });
+
+            boton.addEventListener('touchend', (e) => {
+                // Si quita el dedo antes de los 500ms, cancelamos el toque largo y se procesa como clic izquierdo normal
+                clearTimeout(tiempoPresionado);
+                if (esToqueLargo) {
+                    e.preventDefault(); // Evita que se dispare el click normal si ya fue bandera
+                }
+            });
+
+            boton.addEventListener('touchmove', () => {
+                // Si el usuario arrastra el dedo (porque está haciendo scroll), cancelamos la bandera
+                clearTimeout(tiempoPresionado);
+            });
             
             grid.appendChild(boton);
         }

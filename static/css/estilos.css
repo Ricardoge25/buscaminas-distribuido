@@ -43,3 +43,23 @@
   border-radius: 8px;
   padding: 10px;
 }
+
+/* --- ADAPTACIÓN PARA DISPOSITIVOS MÓVILES --- */
+@media (max-width: 768px) {
+  #contenedor-tablero {
+    overflow-x: auto;
+    padding: 10px;
+    -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+  }
+
+  .celda {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+
+  .tablero-grid {
+    /* Reducimos el padding para ganar espacio en los bordes de la pantalla */
+    padding: 5px; 
+  }
+}
