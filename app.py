@@ -4,7 +4,6 @@ from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'buscaminas_secret_key'
-# Permitimos conexiones desde cualquier origen para evitar problemas de CORS
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Diccionario en memoria para guardar el estado del juego de cada cliente conectado
